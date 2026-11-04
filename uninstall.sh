@@ -25,12 +25,16 @@ esac
 # ---------- 0. 可选:通过 API 删除腾讯云上已申请的证书 ----------
 if [ -f "$INSTALL_DIR/delete_certs.py" ] && [ -f "$INSTALL_DIR/config.json" ]; then
     echo ""
-    echo "提示: 可顺便通过 API 删除腾讯云控制台上已申请的证书。"
+    echo "提示: 可顺便通过 API 删除腾讯云控制台上的证书。"
     echo "      注意: 删除后无法恢复!本地已下载的证书文件不受影响。"
-    read -r -p "是否删除腾讯云上的证书? [y/N]: " yn
+    echo "      0) 跳过,保留全部云端证书(默认)"
+    echo "      1) 只删除已签发的,保留正在申请的"
+    echo "      2) 全部删除(已签发 + 正在申请)"
+    read -r -p "请选择 [0/1/2]: " yn
     case "$yn" in
-        [Yy]*) /usr/bin/python3 "$INSTALL_DIR/delete_certs.py" --delete || true ;;
-        *) echo "[信息] 跳过,保留腾讯云上的证书。" ;;
+        1) /usr/bin/python3 "$INSTALL_DIR/delete_certs.py" --delete --issued-only || true ;;
+        2) /usr/bin/python3 "$INSTALL_DIR/delete_certs.py" --delete || true ;;
+        *) echo "[信息] 跳过,保留腾讯云上的全部证书。" ;;
     esac
 fi
 

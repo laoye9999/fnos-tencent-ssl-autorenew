@@ -4,8 +4,10 @@
 删除腾讯云 SSL 证书(谨慎使用!)
 
 用法:
-  python3 delete_certs.py              # 仅列出 config.json 中域名下的免费证书(只读)
-  python3 delete_certs.py --delete     # 列出后需输入 YES 确认,才逐个删除
+  python3 delete_certs.py                     # 仅列出 config.json 中域名下的免费证书(只读)
+  python3 delete_certs.py --delete            # 列出后需输入 YES 确认,逐个删除(全部状态)
+  python3 delete_certs.py --delete --issued-only
+                                              # 只删除"已签发"的,保留"正在申请"的
 
 注意:
   - 删除后无法恢复!
@@ -87,6 +89,7 @@ STATUS_MAP = {0: "审核中", 1: "已签发", 2: "审核失败", 3: "已过期"}
 def main():
     parser = argparse.ArgumentParser(description="删除腾讯云 SSL 证书")
     parser.add_argument("--delete", action="store_true", help="确认后删除列出的证书(默认仅列出,不删除)")
+    parser.add_argument("--issued-only", action="store_true", help="只删除已签发的证书,保留正在申请(审核中)的")
     args = parser.parse_args()
 
     cfg = load_config()
@@ -125,11 +128,28 @@ def main():
         print("确认删除请运行: python3 delete_certs.py --delete")
         return
 
+    # 确定删除范围
+    targets = certs
+    skipped = []
+    if args.issued_only:
+        targets = [(d, c) for d, c in certs if getattr(c, "Status", None) == 1]
+        skipped = [(d, c) for d, c in certs if getattr(c, "Status", None) != 1]
+        if skipped:
+            print("")
+            print("将保留以下 %d 张正在申请/其他状态的证书:" % len(skipped))
+            for d, c in skipped:
+                print("  - %s (%s,%s)" % (
+                    d, getattr(c, "CertificateId", "?"),
+                    STATUS_MAP.get(getattr(c, "Status", None), "未知")))
+        if not targets:
+            print("没有已签发的证书,无需删除,已取消。")
+            return
+
     print("")
     print("!!! 删除后无法恢复 !!!")
     print("本地已下载的证书文件不受影响,但删除后无法再从腾讯云下载该证书。")
     try:
-        ans = input("确认删除以上 %d 张证书? 输入 YES 继续,其他任意键取消: " % len(certs))
+        ans = input("确认删除以上 %d 张证书? 输入 YES 继续,其他任意键取消: " % len(targets))
     except EOFError:
         ans = ""
     if ans.strip() != "YES":
@@ -137,7 +157,7 @@ def main():
         return
 
     ok = fail = 0
-    for dom, c in certs:
+    for dom, c in targets:
         cert_id = getattr(c, "CertificateId", None)
         try:
             req = models.DeleteCertificateRequest()
