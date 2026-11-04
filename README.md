@@ -1,39 +1,60 @@
-# fnOS 腾讯云 SSL 证书自动续期 + 到期提醒
+# 飞牛 NAS · 腾讯云 SSL 证书自动续期助手(小白版说明)
 
-在飞牛 fnOS 上运行的**一键部署**脚本:自动检查腾讯云免费 SSL 证书(90 天),距到期不足指定天数(默认 20 天)时**自动申请新证书 → DNS 自动验证 → 自动下载 → 写入本地目录**;同时把到期倒计时推送到**飞牛系统通知中心**,并在 NAS 上生成一份**倒计时提醒 txt 文件**。
+## 这个东西能帮你做什么?
 
-## 功能
+SSL 证书就像域名的"身份证",没有它网站就无法用 https 访问。腾讯云免费证书每 **90 天**过期一次,过期了网站会打不开。手动每三个月去申请一次很麻烦,这个脚本帮你:
 
-- ✅ 每天自动检查(默认 03:30),距到期 ≤ 20 天自动申请新证书并下载
-- ✅ 腾讯云 DNS 自动验证(`DNS_AUTO`,域名 DNS 需托管在腾讯云 DNSPod)
-- ✅ 证书(证书链 + 私钥)写入本地目录,并按日期归档一份副本
-- ✅ 飞牛系统通知中心推送提醒(到期倒计时 / 续期成功 / 异常告警)
-- ✅ NAS 本地生成倒计时 txt 文件
-- ✅ 开机自检:NAS 重启后自动恢复定时检查
-- ✅ 一键安装 / 一键卸载
+- ✅ **自动申请**腾讯云免费 SSL 证书
+- ✅ 快到期时(默认还剩 20 天)**自动换一张新证书**
+- ✅ 证书**自动存到 NAS 指定文件夹**,直接给 Lucky / Nginx 用
+- ✅ 通过**飞牛通知中心**提醒你"证书还剩多少天到期"
+- ✅ 装了之后**不用再管**,全自动运行
 
-## 环境要求
+## 开始之前,准备 3 样东西
 
-- 飞牛 fnOS(默认存储结构,`/vol1/1000` 存在)
-- Python 3(fnOS 自带)
-- 腾讯云账号,且域名 DNS 托管在腾讯云 DNSPod(自动验证必需)
-- SSH 登录 NAS 的管理员账号(用于执行脚本、发送系统通知)
+### 1️⃣ 一个 GitHub 只读令牌(拿一次,以后通用)
 
-## 一键部署
+因为仓库是私有的,拉取代码需要一把"一次性钥匙":
 
-### 方式一:一键拉取(推荐)
+1. 电脑浏览器打开 github.com 并登录你的账号
+2. 点右上角头像 → **Settings** → 左边最下方 **Developer settings**
+3. 选 **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
+4. 仓库只勾选 `fnos-tencent-ssl-autorenew`,权限只给 **Contents(Read-only)**,生成后**复制保存**那串以 `github_pat_` 开头的字符
 
-SSH 登录飞牛 NAS,粘贴执行**下面这一条命令**:
+> 这个令牌只有"读取代码"的权限,别人拿到也改不了你的仓库。
+
+### 2️⃣ 腾讯云 API 密钥
+
+1. 电脑浏览器打开 [腾讯云控制台 → API 密钥管理](https://console.cloud.tencent.com/cam/capi)
+2. 点 **新建密钥**,复制 **SecretId** 和 **SecretKey** 备用
+
+> 这是让脚本能"代替你"在腾讯云申请证书的凭证,只保存在你自己的 NAS 上。
+
+### 3️⃣ 域名 DNS 托管在腾讯云
+
+申请证书时腾讯云需要验证"这个域名确实是你的",验证过程**全自动**——前提是域名的 DNS 解析托管在腾讯云(用 DNSPod 或腾讯云解析的都算)。如果你的域名 DNS 在阿里云/Cloudflare 等其他地方,自动验证会失败。
+
+## 怎么连接你的 NAS
+
+电脑上打开"终端"(Mac 自带的就叫**终端**,Windows 可以用 PowerShell 或任何 SSH 工具),输入:
+
+```bash
+ssh 你的NAS用户名@你的NAS的IP地址
+```
+
+回车后输入 NAS 登录密码(输入时不显示字符,是正常的),看到欢迎信息就说明连上了。
+
+## 一键安装(3 步搞定)
+
+### 第 1 步:粘贴"拉取命令"
+
+连上 NAS 后,把下面这一整条命令复制粘贴进去,回车:
 
 ```bash
 bash -c 'set -o pipefail; read -sp "GitHub只读Token: " T; echo; curl -fsSL -H "Authorization: Bearer $T" -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/laoye9999/fnos-tencent-ssl-autorenew/contents/pull.sh?ref=main" | bash -s -- "$T"'
 ```
 
-执行流程全自动:
-
-1. **自动检查环境**:curl / unzip / python3,缺少哪个就自动用 apt 安装(此时会询问 sudo 密码);
-2. **自动拉取最新代码**到 `/vol1/1000/fnos-tencent-ssl-autorenew`;
-3. 弹出菜单,选择即可:
+脚本会自动:① 检查 NAS 环境,缺什么工具自己装(如果提示要 sudo 密码,输入 NAS 登录密码即可)→ ② 把最新代码拉到 NAS → ③ 弹出菜单:
 
 ```
 ==========================================================
@@ -45,135 +66,98 @@ bash -c 'set -o pipefail; read -sp "GitHub只读Token: " T; echo; curl -fsSL -H 
 ----------------------------------------------------------
 ```
 
-Token 获取(只需做一次):GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → 仅勾选本仓库 + `Contents (Read-only)`。
+### 第 2 步:选择 1 安装,按提示填写
 
-以后更新代码 / 重装 / 卸载,**重跑这条命令**即可。也可在 NAS 上直接 `bash /vol1/1000/fnos-tencent-ssl-autorenew/pull.sh`。
+它会问你这些问题(只需填一次,会帮你保存好):
 
-### 方式二:下载 ZIP 上传
-
-1. 在电脑浏览器(已登录 GitHub)打开本仓库页面,点 **Code → Download ZIP** 下载;
-2. 通过飞牛网页文件管理器,把 ZIP 上传到 `/vol1/1000` 并解压;
-3. SSH 登录 NAS:
-
-```bash
-cd /vol1/1000/fnos-tencent-ssl-autorenew
-bash install.sh
-```
-
-### 方式三:git clone(需在 NAS 配置只读访问令牌)
-
-1. 在 GitHub 创建一个只读的 Fine-grained token:Settings → Developer settings → Personal access tokens → Fine-grained tokens → 仅勾选本仓库 + `Contents (Read-only)`;
-2. SSH 登录 NAS:
-
-```bash
-cd /vol1/1000
-git clone https://<你的token>@github.com/laoye9999/fnos-tencent-ssl-autorenew.git
-cd fnos-tencent-ssl-autorenew
-# 克隆完成后清除记录在 .git/config 里的令牌:
-git remote set-url origin https://github.com/laoye9999/fnos-tencent-ssl-autorenew.git
-bash install.sh
-```
-
-### 安装过程
-
-执行 `bash install.sh` 后,脚本会交互式询问(只需填一次,自动写入配置):
-
-| 配置项 | 说明 |
+| 问题 | 填什么 |
 | --- | --- |
-| SecretId / SecretKey | 腾讯云 API 密钥([获取地址](https://console.cloud.tencent.com/cam/capi)),输入时不回显 |
-| 域名 | 支持多个,英文逗号分隔,如 `www.abc.com,abc.com` |
-| 提前几天续期 | 默认 20 天 |
-| 证书输出目录 | 默认 `/vol1/1000/certs` |
-| 倒计时提醒文件路径 | 默认 `/vol1/1000/证书到期倒计时.txt` |
-| NAS sudo 密码 | 用于发送飞牛系统通知(与 SSH 登录密码相同) |
+| SecretId / SecretKey | 第 2️⃣ 步准备的腾讯云密钥(粘贴时看不见,正常) |
+| 域名 | 要申请证书的域名,如 `www.abc.com`(多个用英文逗号隔开) |
+| 提前几天续期 | 直接回车(默认 20 天) |
+| 证书输出目录 | 直接回车(默认 `/vol1/1000/certs`) |
+| 提醒文件路径 | 直接回车(默认 `/vol1/1000/证书到期倒计时.txt`) |
+| sudo 密码 | NAS 登录密码(用来发系统通知) |
 
-> 💡 也可以在仓库目录手动创建 `config.json`(参考 [config.json.example](config.json.example))再执行 `bash install.sh`,脚本会检测到并跳过所有提问。
+### 第 3 步:等它自动完成
 
-填写完域名后,脚本会**自动执行首次流程**(无需手动干预):
+填完域名后**剩下的全自动**:申请证书 → 自动验证 → 下载到 NAS → 发通知。第一次申请大约等 1~3 分钟,最后会显示"部署完成",并把**每个文件在哪**列得清清楚楚,比如:
 
-- 域名在腾讯云还没有证书 → 自动申请新证书(申请 + DNS 自动验证,约 1~3 分钟)
-- 域名已有有效证书(如旧 NAS 迁移过来)但本地没有证书文件 → 自动下载现有证书,不重复申请
-- 流程完成后自动推送飞牛系统通知
+```
+证书文件(给 Lucky / Nginx 配 SSL 用这两个):
+   /vol1/1000/certs/www.abc.com/www.abc.com.crt
+   /vol1/1000/certs/www.abc.com/www.abc.com.key
+```
 
-安装完成后:
+复制这两行路径,填到 Lucky / Nginx 的证书配置里就行。
 
-- 脚本安装到 `/vol1/1000/tencent-ssl/`
-- 定时任务:每天 **03:30** 检查续期 + **开机自检**
-- 证书输出:`<输出目录>/<域名>/<域名>.crt` 和 `<域名>.key`(fullchain + 私钥),另有 `archive/日期/` 归档
+## 安装后:全自动,不用管
 
-证书可直接给 Lucky / Nginx 等反向代理工具使用。
+- 每天凌晨 03:30 自动检查一次证书
+- 到期前 20 天自动申请新证书并替换,同时通知你
+- NAS 重启后也会自动恢复运行
+- 想查看提醒:打开飞牛网页后台,右上角**通知中心**,标题"证书到期倒计时"就是它发的
+
+想手动试一次:`/usr/bin/python3 /vol1/1000/tencent-ssl/renew.py --force`
 
 ## 一键卸载
 
-```bash
-cd /vol1/1000/fnos-tencent-ssl-autorenew
-bash uninstall.sh
-```
+两种方式进卸载,效果一样:
 
-会删除定时任务和 `/vol1/1000/tencent-ssl/` 脚本目录;是否删除已下载的证书、提醒文件,脚本会逐项询问。
-
-**可选:同时删除腾讯云上已申请的证书** —— 卸载过程中会询问,确认后通过 API 逐个删除:
-
-- 删除前会先列出全部匹配证书(域名 / 证书ID / 到期时间),需输入 `YES` 二次确认;
-- ⚠️ 删除**不可恢复**,请确认本地已不需要该证书;
-- 已部署到腾讯云云资源(CDN/CLB 等)的证书可能删除失败,会提示原因;
-- 本地已下载的证书文件不受删除影响。
-
-也可以单独使用(不卸载脚本,只删云端证书):
+**方式一**:在 NAS 上重新跑一遍第 1 步的拉取命令,菜单里选 **2**
+**方式二**:连接 NAS 后输入:
 
 ```bash
-python3 /vol1/1000/tencent-ssl/delete_certs.py            # 只列出,不删除
-python3 /vol1/1000/tencent-ssl/delete_certs.py --delete   # 列出并确认删除
+cd /vol1/1000/fnos-tencent-ssl-autorenew && bash uninstall.sh
 ```
 
-## 手动测试
+卸载会删除:定时任务、脚本目录(含你的密钥文件)。下面这几项会**逐项问你删不删**(默认不删,想留就按 n):
 
-```bash
-# 只检查(不到期就不申请,但会更新通知和倒计时文件)
-/usr/bin/python3 /vol1/1000/tencent-ssl/renew.py
+| 问你什么 | 删掉会怎样 |
+| --- | --- |
+| 腾讯云上已申请的证书? | 云端证书记录没了(不可恢复!),本地已下载的证书文件还在 |
+| 已下载的证书文件夹? | NAS 上的 .crt / .key 文件没了 |
+| 倒计时提醒文件? | NAS 上的提醒 txt 没了 |
+| 拉取目录(脚本本体)? | 以后想重装需要重新跑拉取命令 |
 
-# 强制申请一张新证书
-/usr/bin/python3 /vol1/1000/tencent-ssl/renew.py --force
-```
+全部选 y 就是**彻底卸载**,NAS 上不剩任何痕迹。
 
-日志:`/vol1/1000/tencent-ssl/renew.log`(定时任务输出在 `cron.log`)。
+## 常见问题
 
-## 工作原理
+**Q:填错了 SecretId / 域名,想重新填?**
+A: 跑一遍卸载(保留拉取目录),再跑一遍安装,重新填即可。
 
-```
-定时任务(每天 03:30 + 开机自检)
-   │
-   ▼
-renew.py
-   ├─ 查询该域名最新免费证书
-   ├─ 距到期 > 20 天且本地无证书 → 首次部署:直接下载现有证书
-   ├─ 距到期 > 20 天且本地已有证书 → 跳过,仅更新提醒
-   ├─ 距到期 ≤ 20 天(或域名无证书) → ApplyCertificate 申请
-   ├─ DNS_AUTO 自动验证 → 轮询签发状态(最长 20 分钟)
-   ├─ 下载证书 ZIP → 解出证书链 + 私钥
-   ├─ 写入 <output_dir>/<域名>/(+ 按日期归档)
-   ├─ 更新倒计时提醒 txt 文件
-   └─ 推送飞牛系统通知中心(通过 PostgreSQL 写入 notify 表,自动覆盖旧通知不堆积)
-```
+**Q:换了一台新 NAS?**
+A: 新 NAS 上直接跑"一键安装 3 步"就行。域名已有证书的话,脚本会直接下载现有证书,不浪费申请额度。
+
+**Q:域名 DNS 不在腾讯云,能用吗?**
+A: 自动验证用不了。把域名 DNS 换成腾讯云解析(DNSPod),或者去腾讯云 SSL 控制台手动验证。
+
+**Q:腾讯云上的证书删掉了,网站会挂吗?**
+A: 不会。NAS 本地下载好的证书文件还在,网站照常用。只是以后不能再从腾讯云下载那张证书了。
+
+**Q:想给别人也装一套?**
+A: 让他 fork 本仓库,按上面流程用**他自己的**腾讯云密钥和域名即可。
 
 ## 安全提醒
 
-- `config.json` 包含腾讯云 API 密钥和 NAS 密码,安装时权限已设为 `600`,**请勿提交到 GitHub 或分享**;
-- 本仓库不含任何真实密钥/证书,首次部署需自行填写;
-- 建议为腾讯云 API 密钥开启最小权限(仅 SSL 证书相关);
-- `delete_certs.py` 的删除操作**不可恢复**,执行前会列出全部证书并要求输入 `YES` 确认。
+- 你的腾讯云密钥只存在 NAS 的 `/vol1/1000/tencent-ssl/config.json` 里,权限已锁定(只有你自己能读),**不要把这个文件发给任何人**
+- 本仓库(包括 GitHub 上的)不含任何真实密钥和证书
+- 删除腾讯云证书不可恢复,删除前脚本会列清单并要求输入 YES 确认
 
-## 目录结构
+## 进阶信息(可选阅读)
+
+目录结构:
 
 ```
 .
-├── pull.sh               # 一键拉取:环境检查(缺工具自动安装)+ 菜单(1安装/2卸载)
-├── install.sh            # 一键部署
-├── uninstall.sh          # 一键卸载(可选:同时删除腾讯云上的证书)
-├── renew.py              # 续期 + 通知主脚本
-├── delete_certs.py       # 删除腾讯云上已申请的证书(需 YES 确认,不可恢复)
+├── pull.sh               # 一键拉取:检查环境(缺工具自动装)+ 菜单
+├── install.sh            # 一键安装
+├── uninstall.sh          # 一键卸载
+├── renew.py              # 续期 + 通知主程序
+├── delete_certs.py       # 删除腾讯云上的证书(需 YES 确认)
 ├── config.json.example   # 配置模板
-└── lib/                  # Python 依赖(离线自带,无需 pip 安装)
+└── lib/                  # 程序依赖(已自带,不用另外安装)
 ```
 
-`lib/` 为离线打包的第三方依赖(requests、tencentcloud-sdk-python、urllib3、certifi、charset-normalizer、idna),各依赖许可证见 `lib/*/licenses/`,版权归各自作者所有。本项目代码采用 MIT 许可证。
+`lib/` 内为第三方开源依赖(requests、tencentcloud-sdk-python、urllib3 等),许可证见各目录,版权归原作者所有。本项目代码采用 MIT 许可证。
