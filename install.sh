@@ -99,6 +99,7 @@ echo ""
 echo "[部署] 安装目录: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/lib"
 cp -f "$SCRIPT_DIR/renew.py" "$INSTALL_DIR/renew.py"
+cp -f "$SCRIPT_DIR/delete_certs.py" "$INSTALL_DIR/delete_certs.py"
 cp -rf "$SCRIPT_DIR/lib/." "$INSTALL_DIR/lib/"
 if [ -f "$SCRIPT_DIR/config.json" ]; then
     cp -f "$SCRIPT_DIR/config.json" "$INSTALL_DIR/config.json"
@@ -148,5 +149,6 @@ while IFS= read -r d; do
 done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["domains"]))' "$INSTALL_DIR/config.json")
 echo "   ------------------------------------------------------"
 echo "   手动重跑:   /usr/bin/python3 $INSTALL_DIR/renew.py --force"
+echo "   删除云端证书: /usr/bin/python3 $INSTALL_DIR/delete_certs.py --delete"
 echo "   一键卸载:   bash pull.sh 选 2,或直接 bash uninstall.sh"
 echo "=========================================================="

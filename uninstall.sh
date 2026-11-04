@@ -13,12 +13,24 @@ echo "=========================================================="
 echo " 卸载腾讯云 SSL 证书自动续期脚本"
 echo "=========================================================="
 echo ""
-echo "将执行: 1) 删除定时任务  2) 删除 $INSTALL_DIR"
+echo "将执行: 1) 删除定时任务  2) 删除 $INSTALL_DIR  3) 可选:删除腾讯云上已申请的证书"
 read -r -p "确认卸载? [y/N]: " yn
 case "$yn" in
     [Yy]*) : ;;
     *) echo "已取消。"; exit 0 ;;
 esac
+
+# ---------- 0. 可选:通过 API 删除腾讯云上已申请的证书 ----------
+if [ -f "$INSTALL_DIR/delete_certs.py" ] && [ -f "$INSTALL_DIR/config.json" ]; then
+    echo ""
+    echo "提示: 可顺便通过 API 删除腾讯云控制台上已申请的证书。"
+    echo "      注意: 删除后无法恢复!本地已下载的证书文件不受影响。"
+    read -r -p "是否删除腾讯云上的证书? [y/N]: " yn
+    case "$yn" in
+        [Yy]*) /usr/bin/python3 "$INSTALL_DIR/delete_certs.py" --delete || true ;;
+        *) echo "[信息] 跳过,保留腾讯云上的证书。" ;;
+    esac
+fi
 
 # ---------- 1. 删除定时任务 ----------
 # 先写临时文件再安装,避免两个 crontab 进程并行抢锁(见 install.sh 说明)
