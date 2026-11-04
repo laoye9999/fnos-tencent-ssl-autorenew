@@ -15,6 +15,12 @@ BRANCH="main"
 TARGET="${TARGET:-/vol1/1000/fnos-tencent-ssl-autorenew}"
 
 # ---------- 0. 解析参数 ----------
+# 兼容 curl | bash 拉取方式: 标准输入若是管道(不是终端),改从终端读取,
+# 否则菜单的 read 会读到管道 EOF 而直接退出,用户来不及选择。
+if [ ! -t 0 ] && [ -t /dev/tty ]; then
+    exec < /dev/tty
+fi
+
 TOKEN=""
 CHOICE=""
 for arg in "$@"; do

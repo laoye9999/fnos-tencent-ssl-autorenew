@@ -10,6 +10,11 @@
 # ============================================================
 set -euo pipefail
 
+# 兼容管道方式执行: 标准输入不是终端时,改从终端读取,保证交互提问可用
+if [ ! -t 0 ] && [ -t /dev/tty ]; then
+    exec < /dev/tty
+fi
+
 INSTALL_DIR="/vol1/1000/tencent-ssl"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
