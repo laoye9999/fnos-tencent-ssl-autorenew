@@ -3,6 +3,8 @@
 #  腾讯云免费 SSL 证书自动续期 + 飞牛到期提醒 —— 一键部署脚本
 #  使用方法: 把本仓库放到飞牛 NAS 上(任意目录),然后执行:
 #            bash install.sh
+#  交互式填写腾讯云 API 密钥和域名后,自动完成:
+#  部署 → 安装定时任务 → 首次自动申请/下载证书 → 发通知
 #  也可以先手动编辑好 config.json(参考 config.json.example)
 #  放在本脚本同目录,执行时会跳过交互提问。
 # ============================================================
@@ -121,20 +123,19 @@ CRON_L2="@reboot /bin/bash -c 'until [ -f $INSTALL_DIR/renew.py ]; do sleep 10; 
 } | crontab -
 echo "[完成] 定时任务已安装: 每天 03:30 自动检查续期 + 开机自检"
 
-# ---------- 5. 立即测试 ----------
-read -r -p "是否立即运行一次验证? [Y/n]: " yn
-case "$yn" in
-    [Nn]*) echo "[信息] 跳过,将在下次定时任务时自动运行。" ;;
-    *) echo "[运行] 正在执行 renew.py ..."
-       /usr/bin/python3 "$INSTALL_DIR/renew.py" || true ;;
-esac
+# ---------- 5. 首次自动流程:申请/下载证书 ----------
+echo ""
+echo "[运行] 首次部署自动流程:为新域名自动申请证书,已有有效证书则直接下载..."
+echo "       申请 + DNS 自动验证最长约需 1~3 分钟,请稍候..."
+/usr/bin/python3 "$INSTALL_DIR/renew.py" || echo "[警告] 自动流程有异常,请查看日志: $INSTALL_DIR/renew.log"
 
 echo ""
 echo "=========================================================="
 echo " 部署完成!"
 echo "   脚本目录:   $INSTALL_DIR"
 echo "   配置文件:   $INSTALL_DIR/config.json (权限 600)"
+echo "   证书目录:   $output_dir"
 echo "   运行日志:   $INSTALL_DIR/renew.log"
-echo "   手动测试:   /usr/bin/python3 $INSTALL_DIR/renew.py --force"
+echo "   手动重跑:   /usr/bin/python3 $INSTALL_DIR/renew.py --force"
 echo "   一键卸载:   在本仓库目录执行 bash uninstall.sh"
 echo "=========================================================="

@@ -4,7 +4,8 @@
 飞牛 NAS 版：腾讯云免费 SSL 证书（90天）自动续期，直接写本地目录。
 
 流程：
-  1. 检查该域名最新的免费证书，若距到期还早（> renew_before_days 天）则跳过。
+  1. 检查该域名最新的免费证书，若距到期还早（> renew_before_days 天）则跳过；
+     首次部署时（本地无证书文件）会直接下载现有证书，不重复申请。
   2. 否则 ApplyCertificate(DNS_AUTO) 申请新证书 → CompleteCertificate 触发验证 → 轮询签发。
   3. 下载证书，解出 fullchain + 私钥，写入 output_dir/<domain>/（另归档一份带日期）。
 """
@@ -225,6 +226,8 @@ def send_notification(cfg, domain, end_time, status):
         end_str = end_time.strftime("%Y-%m-%d")
         if "续期" in status:
             content = "%s 证书已自动续期，剩余 %d 天到期（%s）" % (domain, remain, end_str)
+        elif "下载" in status:
+            content = "%s 证书已下载（首次部署），剩余 %d 天到期（%s）" % (domain, remain, end_str)
         else:
             content = "%s 证书剩余 %d 天到期（%s）" % (domain, remain, end_str)
     else:
@@ -272,10 +275,25 @@ def process_domain(client, cfg, domain, force):
     if not force and cur_end is not None:
         remain = (cur_end - datetime.datetime.now()).days
         if remain > int(cfg.get("renew_before_days", 20)):
-            log.info("证书仍有效（%s 到期，还剩 %d 天），跳过", cur_end, remain)
-            write_countdown_txt(cfg, domain, cur_end, "正常，无需更新")
-            send_notification(cfg, domain, cur_end, "正常，无需更新")
-            return
+            # 首次部署:证书仍有效但本地还没有证书文件 → 直接下载现有证书,不重复申请
+            out_root = cfg.get("output_dir", "/vol1/1000/certs")
+            local_crt = os.path.join(out_root, domain, "%s.crt" % domain)
+            if not os.path.isfile(local_crt):
+                log.info("证书仍有效但本地无证书文件（首次部署），直接下载现有证书")
+                try:
+                    zip_bytes = download_zip(client, getattr(latest, "CertificateId", None))
+                    fullchain_bytes, key_bytes = extract_cert_and_key(zip_bytes)
+                    write_output(cfg, domain, zip_bytes, fullchain_bytes, key_bytes)
+                    write_countdown_txt(cfg, domain, cur_end, "已下载现有证书（首次部署）")
+                    send_notification(cfg, domain, cur_end, "已下载现有证书（首次部署）")
+                    return
+                except Exception:
+                    log.exception("下载现有证书失败，改为重新申请一张")
+            else:
+                log.info("证书仍有效（%s 到期，还剩 %d 天），跳过", cur_end, remain)
+                write_countdown_txt(cfg, domain, cur_end, "正常，无需更新")
+                send_notification(cfg, domain, cur_end, "正常，无需更新")
+                return
         log.info("证书将在 %d 天后到期，开始续期", remain)
 
     cert_id = apply_cert(client, domain)
