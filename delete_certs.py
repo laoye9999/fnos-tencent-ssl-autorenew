@@ -81,6 +81,9 @@ def fmt_time(s):
     return s.replace("T", " ").replace("Z", "")[:19]
 
 
+STATUS_MAP = {0: "审核中", 1: "已签发", 2: "审核失败", 3: "已过期"}
+
+
 def main():
     parser = argparse.ArgumentParser(description="删除腾讯云 SSL 证书")
     parser.add_argument("--delete", action="store_true", help="确认后删除列出的证书(默认仅列出,不删除)")
@@ -94,14 +97,27 @@ def main():
         print("未找到匹配的免费证书(域名: %s)" % ", ".join(cfg["domains"]))
         return
 
-    print("")
-    print("找到 %d 张免费证书:" % len(certs))
-    print("-" * 60)
+    # 找出最新的一张(到期时间最晚),列表里做标记
+    newest_id, best_end = None, None
     for dom, c in certs:
-        print("  域名: %s" % dom)
-        print("    证书ID: %s" % getattr(c, "CertificateId", "未知"))
-        print("    到期: %s  状态: %s" % (
-            fmt_time(getattr(c, "CertEndTime", None)), getattr(c, "Status", None)))
+        end = getattr(c, "CertEndTime", None)
+        if end and (best_end is None or end > best_end):
+            best_end, newest_id = end, getattr(c, "CertificateId", None)
+
+    print("")
+    print("找到 %d 张免费证书,涉及域名: %s" % (
+        len(certs), ", ".join(dict.fromkeys(d for d, _ in certs))))
+    print("-" * 60)
+    for i, (dom, c) in enumerate(certs, 1):
+        cid = getattr(c, "CertificateId", "未知")
+        tag = "   ← 最新" if cid == newest_id else ""
+        print("[%d] 域名: %s%s" % (i, dom, tag))
+        print("    证书ID: %s" % cid)
+        print("    生效: %s" % fmt_time(getattr(c, "CertBeginTime", None)))
+        print("    到期: %s" % fmt_time(getattr(c, "CertEndTime", None)))
+        print("    状态: %s(%s)" % (
+            getattr(c, "Status", "未知"),
+            STATUS_MAP.get(getattr(c, "Status", None), "未知")))
     print("-" * 60)
 
     if not args.delete:
