@@ -21,7 +21,11 @@ case "$yn" in
 esac
 
 # ---------- 1. 删除定时任务 ----------
-crontab -l 2>/dev/null | grep -v "tencent-ssl/renew.py" | crontab - || true
+# 先写临时文件再安装,避免两个 crontab 进程并行抢锁(见 install.sh 说明)
+CRON_TMP="$(mktemp)"
+crontab -l 2>/dev/null | grep -v "tencent-ssl/renew.py" > "$CRON_TMP" || true
+crontab "$CRON_TMP" || true
+rm -f "$CRON_TMP"
 echo "[完成] 已删除定时任务"
 
 # ---------- 2. 删除前读取证书目录与提醒文件路径 ----------

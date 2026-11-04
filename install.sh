@@ -114,13 +114,15 @@ echo "[完成] 证书目录: $output_dir"
 echo "[完成] 提醒文件: $txt_path"
 
 # ---------- 4. 安装定时任务(幂等) ----------
+# 注意: 不能把 crontab -l 和 crontab 写操作放进同一条管道并行执行,
+# 两个 crontab 进程会争抢锁文件导致失败。先写临时文件,再一次性安装。
 CRON_L1="30 3 * * * /usr/bin/python3 $INSTALL_DIR/renew.py >> $INSTALL_DIR/cron.log 2>&1"
 CRON_L2="@reboot /bin/bash -c 'until [ -f $INSTALL_DIR/renew.py ]; do sleep 10; done; sleep 30; /usr/bin/python3 $INSTALL_DIR/renew.py >> $INSTALL_DIR/cron.log 2>&1'"
-{
-  crontab -l 2>/dev/null | grep -v "tencent-ssl/renew.py"
-  echo "$CRON_L1"
-  echo "$CRON_L2"
-} | crontab -
+CRON_TMP="$(mktemp)"
+crontab -l 2>/dev/null | grep -v "tencent-ssl/renew.py" > "$CRON_TMP" || true
+printf '%s\n%s\n' "$CRON_L1" "$CRON_L2" >> "$CRON_TMP"
+crontab "$CRON_TMP"
+rm -f "$CRON_TMP"
 echo "[完成] 定时任务已安装: 每天 03:30 自动检查续期 + 开机自检"
 
 # ---------- 5. 首次自动流程:申请/下载证书 ----------
