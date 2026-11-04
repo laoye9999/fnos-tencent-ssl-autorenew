@@ -33,6 +33,7 @@ command -v python3 >/dev/null 2>&1 || { echo "[错误] 未找到 python3,请先�
 [ -d /vol1/1000 ] || { echo "[错误] 未找到 /vol1/1000 目录,此脚本仅适配飞牛 fnOS 默认存储结构。"; exit 1; }
 
 # ---------- 1. 配置 ----------
+mkdir -p "$INSTALL_DIR"  # 首次安装时该目录尚不存在,先创建,后面写配置临时文件要用
 KEEP_CONFIG=0
 if [ -f "$SCRIPT_DIR/config.json" ]; then
     echo "[信息] 检测到仓库目录下已有 config.json,直接使用(跳过提问)。"
