@@ -7,13 +7,15 @@
 set -euo pipefail
 
 INSTALL_DIR="/vol1/1000/tencent-ssl"
+REPO_DIR="/vol1/1000/fnos-tencent-ssl-autorenew"
 
 echo ""
 echo "=========================================================="
 echo " 卸载腾讯云 SSL 证书自动续期脚本"
 echo "=========================================================="
 echo ""
-echo "将执行: 1) 删除定时任务  2) 删除 $INSTALL_DIR  3) 可选:删除腾讯云上已申请的证书"
+echo "将执行: 1) 删除定时任务  2) 删除 $INSTALL_DIR"
+echo "其余项(腾讯云证书/本地证书/提醒文件/拉取目录)将逐项询问"
 read -r -p "确认卸载? [y/N]: " yn
 case "$yn" in
     [Yy]*) : ;;
@@ -65,6 +67,15 @@ if [ -n "$txt_path" ] && [ -f "$txt_path" ]; then
     case "$yn" in
         [Yy]*) rm -f "$txt_path"; echo "[完成] 已删除 $txt_path" ;;
         *) echo "[信息] 已保留 $txt_path" ;;
+    esac
+fi
+
+# ---------- 5. 询问是否删除拉取目录(仓库,含 pull/install/uninstall 脚本) ----------
+if [ -d "$REPO_DIR" ]; then
+    read -r -p "是否同时删除拉取目录 $REPO_DIR ?(删除后重装需重新拉取) [y/N]: " yn
+    case "$yn" in
+        [Yy]*) rm -rf "$REPO_DIR"; echo "[完成] 已删除 $REPO_DIR" ;;
+        *) echo "[信息] 已保留 $REPO_DIR" ;;
     esac
 fi
 
