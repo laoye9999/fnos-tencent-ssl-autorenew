@@ -21,9 +21,35 @@
 
 ## 一键部署
 
-> 本仓库为私有仓库,推荐**方式一(ZIP 上传)**,全程无需在 NAS 上配置 GitHub 凭据。
+### 方式一:一键拉取(推荐)
 
-### 方式一:下载 ZIP 上传(推荐)
+SSH 登录飞牛 NAS,粘贴执行**下面这一条命令**:
+
+```bash
+bash -c 'set -o pipefail; read -sp "GitHub只读Token: " T; echo; curl -fsSL -H "Authorization: Bearer $T" -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/laoye9999/fnos-tencent-ssl-autorenew/contents/pull.sh?ref=main" | bash -s -- "$T"'
+```
+
+执行流程全自动:
+
+1. **自动检查环境**:curl / unzip / python3,缺少哪个就自动用 apt 安装(此时会询问 sudo 密码);
+2. **自动拉取最新代码**到 `/vol1/1000/fnos-tencent-ssl-autorenew`;
+3. 弹出菜单,选择即可:
+
+```
+==========================================================
+ 代码已就绪,请选择操作
+==========================================================
+  1. 一键安装
+  2. 一键卸载
+  q. 退出
+----------------------------------------------------------
+```
+
+Token 获取(只需做一次):GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → 仅勾选本仓库 + `Contents (Read-only)`。
+
+以后更新代码 / 重装 / 卸载,**重跑这条命令**即可。也可在 NAS 上直接 `bash /vol1/1000/fnos-tencent-ssl-autorenew/pull.sh`。
+
+### 方式二:下载 ZIP 上传
 
 1. 在电脑浏览器(已登录 GitHub)打开本仓库页面,点 **Code → Download ZIP** 下载;
 2. 通过飞牛网页文件管理器,把 ZIP 上传到 `/vol1/1000` 并解压;
@@ -34,7 +60,7 @@ cd /vol1/1000/fnos-tencent-ssl-autorenew
 bash install.sh
 ```
 
-### 方式二:git clone(需在 NAS 配置只读访问令牌)
+### 方式三:git clone(需在 NAS 配置只读访问令牌)
 
 1. 在 GitHub 创建一个只读的 Fine-grained token:Settings → Developer settings → Personal access tokens → Fine-grained tokens → 仅勾选本仓库 + `Contents (Read-only)`;
 2. SSH 登录 NAS:
@@ -126,6 +152,7 @@ renew.py
 
 ```
 .
+├── pull.sh               # 一键拉取:环境检查(缺工具自动安装)+ 菜单(1安装/2卸载)
 ├── install.sh            # 一键部署
 ├── uninstall.sh          # 一键卸载
 ├── renew.py              # 续期 + 通知主脚本
