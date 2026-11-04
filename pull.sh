@@ -21,6 +21,14 @@ if [ ! -t 0 ] && [ -t /dev/tty ]; then
     exec < /dev/tty
 fi
 
+# 通过 /tmp 方式拉取执行时(bash /tmp/fnos-pull.sh),退出前清理自身
+cleanup_self() {
+    case "$0" in
+        /tmp/fnos-pull.sh) rm -f "$0" ;;
+    esac
+}
+trap cleanup_self EXIT
+
 TOKEN=""
 CHOICE=""
 for arg in "$@"; do

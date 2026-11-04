@@ -10,7 +10,7 @@ SSL 证书就像域名的"身份证",没有它网站就无法用 https 访问。
 2. 粘贴下面这一整条命令,回车:
 
 ```bash
-bash -c 'curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/laoye9999/fnos-tencent-ssl-autorenew/contents/pull.sh?ref=main" | bash'
+curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/laoye9999/fnos-tencent-ssl-autorenew/contents/pull.sh?ref=main" -o /tmp/fnos-pull.sh && bash /tmp/fnos-pull.sh
 ```
 
 3. 自动检查环境(缺工具自己装)→ 拉取代码 → 弹出菜单,输入 **1** 回车
