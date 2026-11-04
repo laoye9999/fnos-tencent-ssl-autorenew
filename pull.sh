@@ -4,9 +4,9 @@
 #  自动检查/安装环境依赖 → 弹出菜单: 1 一键安装  2 一键卸载
 #
 #  用法:
-#    bash pull.sh              # 拉取后显示菜单,手动选择
-#    bash pull.sh <token>      # 提前传入 GitHub 只读 token(不交互询问)
-#    bash pull.sh 1 <token>    # 拉取后直接执行 1=安装 / 2=卸载 / q=退出
+#    bash pull.sh              # 拉取后显示菜单,手动选择(公开仓库无需令牌)
+#    bash pull.sh 1            # 拉取后直接执行 1=安装 / 2=卸载 / q=退出
+#    bash pull.sh <token>      # 私有 fork 可传入只读 token
 # ============================================================
 set -euo pipefail
 
@@ -56,17 +56,16 @@ echo "[环境] 目标目录 /vol1/1000 正常 ✓"
 echo ""
 
 # ---------- 2. 拉取最新代码 ----------
-if [ -z "$TOKEN" ]; then
-    read -r -s -p "请输入 GitHub 只读访问令牌(输入不回显): " TOKEN
-    echo ""
-fi
-
 echo "[拉取] 正在从 GitHub 下载最新代码..."
 TMP_ZIP="/tmp/fnos-ssl-repo.zip"
 TMP_DIR="/tmp/fnos-ssl-pull"
-curl -fsSL -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+AUTH_ARGS=()
+if [ -n "$TOKEN" ]; then
+    AUTH_ARGS=(-H "Authorization: Bearer $TOKEN")  # 仓库公开时无需令牌;私有 fork 可传 token
+fi
+curl -fsSL "${AUTH_ARGS[@]}" -H "Accept: application/vnd.github+json" \
     "https://api.github.com/repos/$REPO/zipball/$BRANCH" -o "$TMP_ZIP" \
-    || { echo "[错误] 下载失败,请检查 token 是否有效(需要本仓库只读权限)。"; exit 1; }
+    || { echo "[错误] 下载失败,请检查网络,或确认仓库地址: https://github.com/$REPO"; exit 1; }
 rm -rf "$TMP_DIR"; mkdir -p "$TMP_DIR"
 unzip -qo "$TMP_ZIP" -d "$TMP_DIR"
 SRC_DIR="$(ls -d "$TMP_DIR"/*/ | head -1)"

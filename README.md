@@ -10,38 +10,26 @@ SSL 证书就像域名的"身份证",没有它网站就无法用 https 访问。
 2. 粘贴下面这一整条命令,回车:
 
 ```bash
-bash -c 'set -o pipefail; read -sp "GitHub只读Token: " T; echo; curl -fsSL -H "Authorization: Bearer $T" -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/laoye9999/fnos-tencent-ssl-autorenew/contents/pull.sh?ref=main" | bash -s -- "$T"'
+bash -c 'curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/laoye9999/fnos-tencent-ssl-autorenew/contents/pull.sh?ref=main" | bash'
 ```
 
-3. 按提示输入 **GitHub 只读令牌**(下面第 1️⃣ 步有领取方法)
-4. 自动检查环境(缺工具自己装)→ 拉取代码 → 弹出菜单,输入 **1** 回车
-5. 按提示填**腾讯云密钥**和**域名** → 剩下全自动,看到"部署完成"就成了 ✅
+3. 自动检查环境(缺工具自己装)→ 拉取代码 → 弹出菜单,输入 **1** 回车
+4. 按提示填**腾讯云密钥**和**域名** → 剩下全自动,看到"部署完成"就成了 ✅
 
-> 第一次用?先花 2 分钟准备下面的 3 样东西,再回来贴命令。
+> 本仓库已公开,拉取**不需要任何令牌**。第一次用?先花 1 分钟准备下面的 2 样东西,再回来贴命令。
 
 ---
 
-## 开始之前,准备 3 样东西
+## 开始之前,准备 2 样东西
 
-### 1️⃣ 一个 GitHub 只读令牌(拿一次,以后通用)
-
-因为仓库是私有的,拉取代码需要一把"一次性钥匙":
-
-1. 电脑浏览器打开 github.com 并登录你的账号
-2. 点右上角头像 → **Settings** → 左边最下方 **Developer settings**
-3. 选 **Personal access tokens** → **Fine-grained tokens** → **Generate new token**
-4. 仓库只勾选 `fnos-tencent-ssl-autorenew`,权限只给 **Contents(Read-only)**,生成后**复制保存**那串以 `github_pat_` 开头的字符
-
-> 这个令牌只有"读取代码"的权限,别人拿到也改不了你的仓库。
-
-### 2️⃣ 腾讯云 API 密钥
+### 1️⃣ 腾讯云 API 密钥
 
 1. 电脑浏览器打开 [腾讯云控制台 → API 密钥管理](https://console.cloud.tencent.com/cam/capi)
 2. 点 **新建密钥**,复制 **SecretId** 和 **SecretKey** 备用
 
 > 这是让脚本能"代替你"在腾讯云申请证书的凭证,只保存在你自己的 NAS 上。
 
-### 3️⃣ 域名 DNS 托管在腾讯云
+### 2️⃣ 域名 DNS 托管在腾讯云
 
 申请证书时腾讯云需要验证"这个域名确实是你的",验证过程**全自动**——前提是域名的 DNS 解析托管在腾讯云(用 DNSPod 或腾讯云解析的都算)。如果你的域名 DNS 在阿里云/Cloudflare 等其他地方,自动验证会失败。
 
@@ -69,8 +57,7 @@ ssh 你的NAS用户名@你的NAS的IP地址
 
 | 问题 | 填什么 |
 | --- | --- |
-| GitHub 只读令牌 | 第 1️⃣ 步准备的 `github_pat_` 开头的字符(粘贴时不显示,正常) |
-| SecretId / SecretKey | 第 2️⃣ 步准备的腾讯云密钥(粘贴时不显示,正常) |
+| SecretId / SecretKey | 第 1️⃣ 步准备的腾讯云密钥(粘贴时不显示,正常) |
 | 域名 | 要申请证书的域名,如 `www.abc.com`(多个用英文逗号隔开) |
 | 提前几天续期 | 直接回车(默认 20 天) |
 | 证书输出目录 | 直接回车(默认 `/vol1/1000/certs`) |
