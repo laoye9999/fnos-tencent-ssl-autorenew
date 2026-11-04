@@ -1,0 +1,9 @@
+{
+  "secret_id": "YOUR_SECRET_ID",
+  "secret_key": "YOUR_SECRET_KEY",
+  "domains": ["www.example.com", "example.com"],
+  "renew_before_days": 20,
+  "output_dir": "/vol1/1000/certs",
+  "txt_path": "/vol1/1000/证书到期倒计时.txt",
+  "sudo_password": "YOUR_NAS_SUDO_PASSWORD"
+}
